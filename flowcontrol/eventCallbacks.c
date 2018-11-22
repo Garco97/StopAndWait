@@ -26,7 +26,8 @@ int window_size;
 long timeout;
 void* buffer[500];
 int chk_validation;
-
+int ack_number = 1;
+int seq_number = 1;
 /*
 * SECTION 2: CALLBACK FUNCTIONS
 * -----------------------------
@@ -54,27 +55,50 @@ void receive_callback(packet_t *pkt, size_t n) {
   if (chk_validation == 0){
     printf("%s\n", "Wrong checksum");
   }else{
-    int size = pkt->len;
-    int tam = ACCEPT_DATA(pkt->data,size);
-    if(ACCEPT_DATA(pkt->data,size) == -1){
-      printf("%s\n", "Wrong data");
+    if(pkt->type == DATA){
+      if(pkt->seqno == ack_number){
+        printf("%s\n", "llega trama");
+        int size = pkt->len;
+        int tam = ACCEPT_DATA(pkt->data,size - 10);
+        if(tam == -1){
+          printf("%s\n", "Wrong data");
+        }else{
+
+          SEND_ACK_PACKET(pkt->ackno);
+
+        }
+      }else{
+        printf("%s %d %s %d\n", "seq ESPERADO",ack_number, "seq LLEGADO",pkt->seqno);
+}
+
+    }else if(pkt->type == ACK){
+      printf("%s\n", "recibo ack");
+      if (pkt->ackno == seq_number){
+        ++ack_number;
+        ++seq_number;
+        CLEAR_TIMER(0);
+      }else{
+        printf("%s\n", "La trama ack no es la correcta");
+        printf("%s %d %s %d\n", "ACK ESPERADO",seq_number, "ACK LLEGADO",pkt->ackno);
+
+      }
     }
-
   }
-
 }
 
 /* Callback called when the application wants to send data to the other end*/
 void send_callback() {
-  int prueba = READ_DATA_FROM_APP_LAYER(buffer,500);
-  if (prueba == -1){
+  int tamano = READ_DATA_FROM_APP_LAYER(buffer,500);
+  if (tamano == -1){
     printf("%s\n","ERROR READ" );
   }else{
     packetType_t type = DATA;
-    uint32_t ackNo = 1;
-    uint32_t seqNo = 1;
-    uint16_t length = prueba + 10;
+    uint32_t ackNo = ack_number;
+    uint32_t seqNo = seq_number;
+    uint16_t length = tamano + 10;
+
     SEND_DATA_PACKET(type,length,ackNo, seqNo, &buffer);
+    SET_TIMER(0,100000);
   }
 }
 
