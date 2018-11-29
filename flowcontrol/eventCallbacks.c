@@ -25,7 +25,6 @@
 int window_size;
 long timeout;
 void* buffer[500];
-int chk_validation;
 int ack_number = 1;
 int seq_number = 1;
 /*
@@ -68,7 +67,7 @@ void receive_callback(packet_t *pkt, size_t n) {
 			}
 		}else if(pkt->type == ACK){
 			printf("%s\n", "recibo ack");
-			if (pkt->ackno == seq_number){
+			if (pkt->ackno == ack_number){
 				++ack_number;
 				CLEAR_TIMER(0);
 			}else{
