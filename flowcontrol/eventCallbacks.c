@@ -25,8 +25,9 @@
 int window_size;
 long timeout;
 void* buffer[500];
-int ack_number = 1;
-int seq_number = 1;
+int ack_number = 0;
+int seq_number = 0;
+int tamano;
 /*
 * SECTION 2: CALLBACK FUNCTIONS
 * -----------------------------
@@ -63,16 +64,18 @@ void receive_callback(packet_t *pkt, size_t n) {
 					printf("%s\n", "Wrong data");
 				}
 			}else{
-				printf("%s %d %s %d\n", "seq ESPERADO",ack_number, "seq LLEGADO",pkt->seqno);
+				printf("%s %d %s %d\n", "seq ESPERADO",ack_number % 2, "seq LLEGADO",pkt->seqno % 2);
 			}
 		}else if(pkt->type == ACK){
-			printf("%s\n", "recibo ack");
-			if (pkt->ackno == ack_number){
+			printf("%s %d\n", "recibo ack", pkt->ackno % 2);
+			if ((pkt->ackno) == ack_number % 2){
 				++ack_number;
 				CLEAR_TIMER(0);
+				RESUME_TRANSMISSION();
+				printf("%s\n", "Todo correcto");
 			}else{
 				printf("%s\n", "La trama ack no es la correcta");
-				printf("%s %d %s %d\n", "ACK ESPERADO",seq_number, "ACK LLEGADO",pkt->ackno);
+				printf("%s %d %s %d\n", "ACK ESPERADO",seq_number % 2, "ACK LLEGADO",pkt->ackno % 2);
 			}
 		}
 	}
@@ -80,11 +83,12 @@ void receive_callback(packet_t *pkt, size_t n) {
 
 /* Callback called when the application wants to send data to the other end*/
 void send_callback() {
-	if (READ_DATA_FROM_APP_LAYER(buffer,500) == -1){
+	 tamano = READ_DATA_FROM_APP_LAYER(buffer,500);
+	if (tamano == -1){
 		printf("%s\n","ERROR READ" );
 	}else{
 		uint16_t length = tamano + 10;
-		SEND_DATA_PACKET(DATA,length,ack_number, seq_number, &buffer);
+		SEND_DATA_PACKET(DATA,length,ack_number % 2, seq_number % 2, &buffer);
 		SET_TIMER(0,timeout);
 		PAUSE_TRANSMISSION();
 	}
@@ -96,8 +100,8 @@ void send_callback() {
 */
 void timer_callback(int timerNumber) {
 	CLEAR_TIMER(0);
-	printf("Reenviando trama %d\n",seq_number);
-	SEND_DATA_PACKET(DATA, tamano+10, seq_number, ack_number, &datos);
+	printf("Reenviando trama %d\n",seq_number % 2);
+	SEND_DATA_PACKET(DATA, tamano+10, ack_number % 2, seq_number % 2, &buffer);
 	SET_TIMER(0, timeout);
 	PAUSE_TRANSMISSION();
 }
